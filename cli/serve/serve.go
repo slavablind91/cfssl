@@ -27,8 +27,9 @@ import (
 	"github.com/cloudflare/cfssl/api/scan"
 	"github.com/cloudflare/cfssl/api/signhandler"
 	"github.com/cloudflare/cfssl/bundler"
+	"github.com/cloudflare/cfssl/certdb"
+	"github.com/cloudflare/cfssl/certdb/db"
 	"github.com/cloudflare/cfssl/certdb/dbconf"
-	certsql "github.com/cloudflare/cfssl/certdb/sql"
 	"github.com/cloudflare/cfssl/cli"
 	ocspsign "github.com/cloudflare/cfssl/cli/ocspsign"
 	"github.com/cloudflare/cfssl/cli/sign"
@@ -37,8 +38,6 @@ import (
 	"github.com/cloudflare/cfssl/ocsp"
 	"github.com/cloudflare/cfssl/signer"
 	"github.com/cloudflare/cfssl/ubiquity"
-
-	"github.com/jmoiron/sqlx"
 )
 
 // Usage text of 'cfssl serve'
@@ -65,7 +64,7 @@ var (
 	conf       cli.Config
 	s          signer.Signer
 	ocspSigner ocsp.Signer
-	db         *sqlx.DB
+	dbAccessor certdb.Accessor
 )
 
 // V1APIPrefix is the prefix of all CFSSL V1 API Endpoints.
@@ -168,11 +167,11 @@ var endpoints = map[string]func() (http.Handler, error){
 			return nil, errBadSigner
 		}
 
-		if db == nil {
+		if dbAccessor == nil {
 			return nil, errNoCertDBConfigured
 		}
 
-		return crl.NewHandler(certsql.NewAccessor(db), conf.CAFile, conf.CAKeyFile)
+		return crl.NewHandler(dbAccessor, conf.CAFile, conf.CAKeyFile)
 	},
 
 	"gencrl": func() (http.Handler, error) {
@@ -228,10 +227,10 @@ var endpoints = map[string]func() (http.Handler, error){
 	},
 
 	"revoke": func() (http.Handler, error) {
-		if db == nil {
+		if dbAccessor == nil {
 			return nil, errNoCertDBConfigured
 		}
-		return revoke.NewHandler(certsql.NewAccessor(db)), nil
+		return revoke.NewHandler(dbAccessor), nil
 	},
 
 	"/": func() (http.Handler, error) {
@@ -277,16 +276,19 @@ func serverMain(args []string, c cli.Config) error {
 		return err
 	}
 
-	if c.DBConfigFile != "" {
-		db, err = dbconf.DBFromConfig(c.DBConfigFile)
-		if err != nil {
-			return err
-		}
+	cfg, err := dbconf.LoadFile(c.DBConfigFile)
+	if err != nil {
+		return err
+	}
+
+	dbAccessor, err := db.NewAccessor(cfg)
+	if err != nil {
+		return err
 	}
 
 	log.Info("Initializing signer")
 
-	if s, err = sign.SignerFromConfigAndDB(c, db); err != nil {
+	if s, err = sign.SignerFromConfigAndDB(c, dbAccessor); err != nil {
 		log.Warningf("couldn't initialize signer: %v", err)
 	}
 

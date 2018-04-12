@@ -15,6 +15,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/cloudflare/cfssl/certdb"
+	"github.com/cloudflare/cfssl/certdb/db"
 	"github.com/cloudflare/cfssl/certdb/dbconf"
 	"github.com/cloudflare/cfssl/config"
 	"github.com/cloudflare/cfssl/helpers"
@@ -24,7 +26,6 @@ import (
 
 	"github.com/cloudflare/redoctober/client"
 	"github.com/cloudflare/redoctober/core"
-	"github.com/jmoiron/sqlx"
 )
 
 // RawMap is shorthand for the type used as a map from string to raw Root struct.
@@ -104,7 +105,7 @@ type Root struct {
 	Certificate *x509.Certificate
 	Config      *config.Signing
 	ACL         whitelist.NetACL
-	DB          *sqlx.DB
+	DBAccessor  certdb.Accessor
 }
 
 // LoadRoot parses a config structure into a Root structure
@@ -155,13 +156,19 @@ func LoadRoot(cfg map[string]string) (*Root, error) {
 		}
 	}
 
-	dbConfig := cfg["dbconfig"]
-	if dbConfig != "" {
-		db, err := dbconf.DBFromConfig(dbConfig)
+	configFile := cfg["dbconfig"]
+	if configFile != "" {
+		cfg, err := dbconf.LoadFile(configFile)
 		if err != nil {
 			return nil, err
 		}
-		root.DB = db
+
+		dbAccessor, err := db.NewAccessor(cfg)
+		if err != nil {
+			return nil, err
+		}
+
+		root.DBAccessor = dbAccessor
 	}
 
 	return &root, nil

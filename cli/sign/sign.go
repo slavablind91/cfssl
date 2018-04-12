@@ -6,15 +6,15 @@ import (
 	"errors"
 	"io/ioutil"
 
+	"github.com/cloudflare/cfssl/certdb"
+
+	"github.com/cloudflare/cfssl/certdb/db"
 	"github.com/cloudflare/cfssl/certdb/dbconf"
-	certsql "github.com/cloudflare/cfssl/certdb/sql"
 	"github.com/cloudflare/cfssl/cli"
 	"github.com/cloudflare/cfssl/config"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/cloudflare/cfssl/signer"
 	"github.com/cloudflare/cfssl/signer/universal"
-
-	"github.com/jmoiron/sqlx"
 )
 
 // Usage text of 'cfssl sign'
@@ -39,8 +39,8 @@ var signerFlags = []string{"hostname", "csr", "ca", "ca-key", "config", "profile
 	"mutual-tls-cert", "mutual-tls-key", "db-config"}
 
 // SignerFromConfigAndDB takes the Config and creates the appropriate
-// signer.Signer object with a specified db
-func SignerFromConfigAndDB(c cli.Config, db *sqlx.DB) (signer.Signer, error) {
+// signer.Signer object with a specified db accessor
+func SignerFromConfigAndDB(c cli.Config, accessor certdb.Accessor) (signer.Signer, error) {
 	// If there is a config, use its signing policy. Otherwise create a default policy.
 	var policy *config.Signing
 	if c.CFG != nil {
@@ -84,9 +84,8 @@ func SignerFromConfigAndDB(c cli.Config, db *sqlx.DB) (signer.Signer, error) {
 		return nil, err
 	}
 
-	if db != nil {
-		dbAccessor := certsql.NewAccessor(db)
-		s.SetDBAccessor(dbAccessor)
+	if accessor != nil {
+		s.SetDBAccessor(accessor)
 	}
 
 	return s, nil
@@ -95,14 +94,17 @@ func SignerFromConfigAndDB(c cli.Config, db *sqlx.DB) (signer.Signer, error) {
 // SignerFromConfig takes the Config and creates the appropriate
 // signer.Signer object
 func SignerFromConfig(c cli.Config) (s signer.Signer, err error) {
-	var db *sqlx.DB
-	if c.DBConfigFile != "" {
-		db, err = dbconf.DBFromConfig(c.DBConfigFile)
-		if err != nil {
-			return nil, err
-		}
+	cfg, err := dbconf.LoadFile(c.DBConfigFile)
+	if err != nil {
+		return nil, err
 	}
-	return SignerFromConfigAndDB(c, db)
+
+	accessor, err := db.NewAccessor(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return SignerFromConfigAndDB(c, accessor)
 }
 
 // signerMain is the main CLI of signer functionality.

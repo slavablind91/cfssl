@@ -4,15 +4,13 @@ package crl
 import (
 	"os"
 
+	"github.com/cloudflare/cfssl/certdb/db"
 	"github.com/cloudflare/cfssl/certdb/dbconf"
-	certsql "github.com/cloudflare/cfssl/certdb/sql"
 	"github.com/cloudflare/cfssl/cli"
 	"github.com/cloudflare/cfssl/crl"
 	cferr "github.com/cloudflare/cfssl/errors"
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/cloudflare/cfssl/log"
-
-	"github.com/jmoiron/sqlx"
 )
 
 var crlUsageText = `cfssl crl -- generate a new Certificate Revocation List from Database
@@ -35,18 +33,15 @@ func generateCRL(c cli.Config) (crlBytes []byte, err error) {
 		return
 	}
 
-	var db *sqlx.DB
-	if c.DBConfigFile != "" {
-		db, err = dbconf.DBFromConfig(c.DBConfigFile)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		log.Error("no Database specified!")
+	cfg, err := dbconf.LoadFile(c.DBConfigFile)
+	if err != nil {
 		return nil, err
 	}
 
-	dbAccessor := certsql.NewAccessor(db)
+	dbAccessor, err := db.NewAccessor(cfg)
+	if err != nil {
+		return nil, err
+	}
 
 	log.Debug("loading CA: ", c.CAFile)
 	ca, err := helpers.ReadBytes(c.CAFile)

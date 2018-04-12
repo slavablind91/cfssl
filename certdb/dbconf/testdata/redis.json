@@ -1,0 +1,4 @@
+{
+    "driver": "redis",
+    "data_source": "redis://localhost:6379"
+}

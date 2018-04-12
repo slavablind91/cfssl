@@ -9,7 +9,6 @@ import (
 	"net/http"
 
 	"github.com/cloudflare/cfssl/api/info"
-	"github.com/cloudflare/cfssl/certdb/sql"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/cloudflare/cfssl/multiroot/config"
 	"github.com/cloudflare/cfssl/signer"
@@ -29,9 +28,8 @@ func parseSigner(root *config.Root) (signer.Signer, error) {
 			return nil, err
 		}
 		s.SetPolicy(root.Config)
-		if root.DB != nil {
-			dbAccessor := sql.NewAccessor(root.DB)
-			s.SetDBAccessor(dbAccessor)
+		if root.DBAccessor != nil {
+			s.SetDBAccessor(root.DBAccessor)
 		}
 		return s, nil
 	default:

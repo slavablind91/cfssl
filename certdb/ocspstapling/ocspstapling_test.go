@@ -16,7 +16,6 @@ import (
 	"github.com/cloudflare/cfssl/certdb/sql"
 	"github.com/cloudflare/cfssl/certdb/testdb"
 	"github.com/cloudflare/cfssl/helpers"
-	"github.com/google/certificate-transparency-go"
 	"golang.org/x/crypto/ocsp"
 )
 
