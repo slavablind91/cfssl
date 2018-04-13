@@ -78,6 +78,11 @@ func (a *Accessor) checkDB() error {
 		return cferr.Wrap(cferr.CertStoreError, cferr.Unknown,
 			errors.New("unknown db object in redis.Accessor"))
 	}
+
+	if err := a.db.Ping().Err(); err != nil {
+		return wrapError(err)
+	}
+
 	return nil
 }
 
@@ -86,9 +91,15 @@ func (a *Accessor) SetDB(db *redis.Client) {
 	a.db = db
 }
 
-// updateCertificateRecord update(replace) given CertificateRecord
-func (a *Accessor) updateCertificateRecord(cr *certdb.CertificateRecord) error {
-	key := certKeyFromCertRec(cr)
+// InsertCertificate puts a certdb.CertificateRecord into db.
+func (a *Accessor) InsertCertificate(cr certdb.CertificateRecord) error {
+	// insert is equal to update/replace
+	err := a.checkDB()
+	if err != nil {
+		return err
+	}
+
+	key := certKeyFromCertRec(&cr)
 
 	crmap := make(map[string]interface{})
 	crmap[serialField] = cr.Serial
@@ -100,24 +111,13 @@ func (a *Accessor) updateCertificateRecord(cr *certdb.CertificateRecord) error {
 	crmap[revokedatField] = cr.RevokedAt.Format(time.RFC3339)
 	crmap[pemField] = cr.PEM
 
-	err := a.db.HMSet(key, crmap).Err()
+	err = a.db.HMSet(key, crmap).Err()
 
 	if err != nil {
 		return wrapError(err)
 	}
 
 	return nil
-}
-
-// InsertCertificate puts a certdb.CertificateRecord into db.
-func (a *Accessor) InsertCertificate(cr certdb.CertificateRecord) error {
-	// insert is equal to update/replace
-	err := a.checkDB()
-	if err != nil {
-		return err
-	}
-
-	return a.updateCertificateRecord(&cr)
 }
 
 // GetCertificate gets a certdb.CertificateRecord indexed by serial.
