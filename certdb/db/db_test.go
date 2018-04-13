@@ -18,7 +18,12 @@ func TestNewAccessor(t *testing.T) {
 		want    certdb.Accessor
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name:    "nil DBConfig",
+			args:    args{nil},
+			want:    nil,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

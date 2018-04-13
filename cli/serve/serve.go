@@ -281,7 +281,7 @@ func serverMain(args []string, c cli.Config) error {
 		return err
 	}
 
-	dbAccessor, err := db.NewAccessor(cfg)
+	dbAccessor, err = db.NewAccessor(cfg)
 	if err != nil {
 		return err
 	}
