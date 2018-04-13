@@ -11,7 +11,7 @@ import (
 
 // NewAccessor returns a new Accessor.
 func NewAccessor(cfg *dbconf.DBConfig) (certdb.Accessor, error) {
-	log.Infof("Create new Accessor for: %s\n", cfg.DriverName)
+	log.Debug("Create new Accessor for: ", cfg.DriverName)
 	if cfg.DriverName == "redis" {
 		accessor, err := redis.NewAccessor(cfg)
 		if err != nil {
@@ -23,7 +23,7 @@ func NewAccessor(cfg *dbconf.DBConfig) (certdb.Accessor, error) {
 
 	db, err := sqlx.Open(cfg.DriverName, cfg.DataSourceName)
 	if err != nil {
-		log.Error("no Database specified!")
+		log.Error("no database specified!")
 		return nil, err
 	}
 
