@@ -94,17 +94,20 @@ func SignerFromConfigAndDB(c cli.Config, accessor certdb.Accessor) (signer.Signe
 // SignerFromConfig takes the Config and creates the appropriate
 // signer.Signer object
 func SignerFromConfig(c cli.Config) (s signer.Signer, err error) {
-	cfg, err := dbconf.LoadFile(c.DBConfigFile)
-	if err != nil {
-		return nil, err
+	if c.DBConfigFile != "" {
+		cfg, err := dbconf.LoadFile(c.DBConfigFile)
+		if err != nil {
+			return nil, err
+		}
+
+		accessor, err := db.NewAccessor(cfg)
+		if err != nil {
+			return nil, err
+		}
+		return SignerFromConfigAndDB(c, accessor)
 	}
 
-	accessor, err := db.NewAccessor(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	return SignerFromConfigAndDB(c, accessor)
+	return SignerFromConfigAndDB(c, nil)
 }
 
 // signerMain is the main CLI of signer functionality.
