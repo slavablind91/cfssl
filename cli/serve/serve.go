@@ -64,7 +64,7 @@ var (
 	conf       cli.Config
 	s          signer.Signer
 	ocspSigner ocsp.Signer
-	dbAccessor certdb.Accessor
+	dbAccessor certdb.Accessor = (certdb.Accessor)(nil)
 )
 
 // V1APIPrefix is the prefix of all CFSSL V1 API Endpoints.
@@ -276,14 +276,16 @@ func serverMain(args []string, c cli.Config) error {
 		return err
 	}
 
-	cfg, err := dbconf.LoadFile(c.DBConfigFile)
-	if err != nil {
-		return err
-	}
+	if c.DBConfigFile != "" {
+		cfg, err := dbconf.LoadFile(c.DBConfigFile)
+		if err != nil {
+			return err
+		}
 
-	dbAccessor, err = db.NewAccessor(cfg)
-	if err != nil {
-		return err
+		dbAccessor, err = db.NewAccessor(cfg)
+		if err != nil {
+			return err
+		}
 	}
 
 	log.Info("Initializing signer")
