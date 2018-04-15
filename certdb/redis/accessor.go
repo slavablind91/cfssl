@@ -180,7 +180,7 @@ const (
 )
 
 func checkUnexpired(expiry time.Time) bool {
-	return checkUnexpired(expiry)
+	return time.Now().UTC().Before(expiry)
 }
 
 func checkRevokedUnexpired(status string, expiry time.Time) bool {
@@ -271,7 +271,7 @@ func (a *Accessor) GetRevokedAndUnexpiredCertificates() ([]certdb.CertificateRec
 
 // GetRevokedAndUnexpiredCertificatesByLabel gets all revoked and unexpired certificate from db (for CRLs) with specified ca_label.
 func (a *Accessor) GetRevokedAndUnexpiredCertificatesByLabel(label string) ([]certdb.CertificateRecord, error) {
-	return a.getCertificates(unexpiredRevoked, label)
+	return a.getCertificates(unexpiredRevokedLabel, label)
 }
 
 // RevokeCertificate updates a certificate with a given serial number and marks it revoked.
@@ -285,7 +285,7 @@ func (a *Accessor) RevokeCertificate(serial, aki string, reasonCode int) error {
 	crmap := make(map[string]interface{})
 	crmap[statusField] = revokedStatus
 	crmap[reasonField] = reasonCode
-	crmap[revokedatField] = time.Now().UTC()
+	crmap[revokedatField] = time.Now().UTC().Format(time.RFC3339)
 
 	err = a.db.HMSet(key, crmap).Err()
 
@@ -309,7 +309,7 @@ func (a *Accessor) InsertOCSP(rr certdb.OCSPRecord) error {
 	rrmap[serialField] = rr.Serial
 	rrmap[akiField] = rr.AKI
 	rrmap[bodyField] = rr.Body
-	rrmap[expiryField] = rr.Expiry
+	rrmap[expiryField] = rr.Expiry.UTC().Format(time.RFC3339)
 
 	err = a.db.HMSet(key, rrmap).Err()
 
